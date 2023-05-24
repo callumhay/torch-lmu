@@ -16,7 +16,7 @@ def lecun_uniform_(tensor: torch.Tensor) -> torch.Tensor:
             Springer, 2012
     """
     fan_in = nn.init._calculate_correct_fan(tensor, "fan_in")
-    limit = np.sqrt(3. / fan_in)
+    limit = np.sqrt(3.0 / fan_in)
     # Fills the tensor with values sampled from U(-limit, limit)
     return nn.init.uniform_(tensor, -limit, limit) 
 

@@ -71,30 +71,30 @@ class LMUFFT(nn.Module):
         """
         Parameters:
             x (torch.tensor): 
-                Input of size [batch_size, seq_len, input_size]
+                Input of size [batch_size=B, seq_len=S, input_size=C]
         """
-        seq_len = x.shape[1]
+        S = x.shape[1]
 
         # Equation 18 of the paper
-        u = self.f_u(self.W_u(x)) # [batch_size, seq_len, memory_d]
+        u = self.f_u(self.W_u(x)) # [B, S, memory_d]
 
         # Equation 26 of the paper
-        fft_input = u.permute(0, 2, 1) # [batch_size, memory_d, seq_len]
-        fft_u = fft.rfft(fft_input, n = 2*seq_len, dim = -1) # [batch_size, memory_d, seq_len+1]
+        fft_input = u.permute(0, 2, 1) # [B, memory_d, S]
+        fft_u = fft.rfft(fft_input, n=2*S, dim = -1) # [B, memory_d, S+1]
 
         # Element-wise multiplication (uses broadcasting)
-        # [batch_size, memory_d, 1, seq_len+1] * [order, seq_len+1] =
-        # [batch_size, memory_d, order, seq_len+1]
+        # [B, memory_d, 1, S+1] * [order, S+1] =
+        # [B, memory_d, order, S+1]
         temp = fft_u.unsqueeze(-2) * self.fft_H
 
-        m = fft.irfft(temp, n = 2*seq_len, dim = -1)[..., :seq_len] # [batch_size, memory_d, order, seq_len]
-        m = m.reshape(-1, self.memory_d*self.order, seq_len) # [batch_size, memory_d*order, seq_len]
-        m = m.permute(0, 2, 1) # [batch_size, seq_len, memory_d*order]
+        m = fft.irfft(temp, n=2*S, dim=-1)[..., :S]    # [B, memory_d, order, S]
+        m = m.reshape(-1, self.memory_d*self.order, S) # [B, memory_d*order, S]
+        m = m.permute(0, 2, 1) # [B, S, memory_d*order]
 
         # Equation 20 of the paper (W_m@m + W_x@x  W@[m;x])
-        input_h = torch.cat((m, x), dim = -1) # [batch_size, seq_len, memory_d*order + input_size]
-        h = self.f_h(self.W_h(input_h)) # [batch_size, seq_len, hidden_size]
+        input_h = torch.cat((m, x), dim=-1) # [B, S, memory_d*order + C]
+        h = self.f_h(self.W_h(input_h)) # [B, S, hidden_size]
 
-        h_n = h[:, -1, :] # [batch_size, hidden_size]
+        h_n = h[:, -1, :] # [B, hidden_size]
 
         return h, h_n
